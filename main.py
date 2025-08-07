@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from faker import Faker
 
 from flask import Flask, request, make_response
-from flask_cors import CORS
 
 app = Flask(__name__)
 
@@ -115,7 +114,7 @@ def js_sample_data():
 
 
 @app.route('/', methods=['GET'])
-def index(): # Quick and dirty to serve a simple HTML page
+def index():
     html = '''
     <html>
       <head>
@@ -123,6 +122,7 @@ def index(): # Quick and dirty to serve a simple HTML page
       </head>
       <body>
         <h2>Sample Data Generator</h2>
+        Number of entries to generate: <input type="number" id="entriesInput" value="10" min="1" style="width:60px;">
         <button id="generateBtn">Generate</button>
         <br><br>
         <label>Customers:</label><br>
@@ -133,7 +133,8 @@ def index(): # Quick and dirty to serve a simple HTML page
         <textarea id="transactionsBox" rows="10" cols="80" readonly></textarea>
         <script>
           document.getElementById('generateBtn').onclick = function() {
-            fetch('/sample_data')
+            var entries = document.getElementById('entriesInput').value || 10;
+            fetch('/sample_data?entries=' + encodeURIComponent(entries))
               .then(response => response.json())
               .then(data => {
                 document.getElementById('customersBox').value = JSON.stringify(data.customers, null, 2);
