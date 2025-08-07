@@ -88,7 +88,7 @@ def generate_transactions(customers, items):
     return transactions
 
 
-def generate_event_data(transactions):
+def generate_event_data(transactions): # This part is mostly AI generated
     all_events = []
     for transaction in transactions:
         base_time = datetime.fromisoformat(transaction["timestamp"])
@@ -192,9 +192,8 @@ def js_sample_data():
     return make_response(response, 200)
 
 
-# This part is mostly AI generated
 @app.route('/', methods=['GET'])
-def index():
+def index(): # This part is mostly AI generated
     html = '''
 <html>
 <head>
@@ -266,9 +265,8 @@ def index():
     return html
 
 
-# This function is mostly AI generated
 @app.route('/cook_time_chart', methods=['POST'])
-def get_chart_for_cook_time_per_food_item():
+def get_chart_for_cook_time_per_food_item(): # This function is mostly AI generated
     sample_data = request.get_json(force=True)
     events_dataframe = pd.DataFrame(sample_data['events'])
     items_df = pd.DataFrame(sample_data['items'])
@@ -306,7 +304,7 @@ def get_chart_for_cook_time_per_food_item():
 
 
 @app.route('/items_by_transaction_method_chart', methods=['POST'])
-def plot_total_items_by_transaction_method():
+def plot_total_items_by_transaction_method(): # This part is mostly AI generated
     sample_data = request.get_json(force=True)
     transactions = pd.DataFrame(sample_data['transactions'])
 
