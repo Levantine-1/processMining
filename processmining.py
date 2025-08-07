@@ -14,7 +14,6 @@ import io
 from flask import Flask, request, make_response, send_file
 app = Flask(__name__)
 
-
 def generate_customers(number_of_customers):
     fake = Faker('en_US')
     customers = []
@@ -204,13 +203,13 @@ def index(): # This part is mostly AI generated
   Number of customer transactions to generate: <input type="number" id="entriesInput" value="100" min="1" style="width:60px;">
   <button id="generateBtn">Generate</button>
   <br><br>
-  <label>Customers:</label><br>
+  <label>Customers: Randomly Generated</label><br>
   <textarea id="customersBox" rows="10" cols="80" readonly></textarea><br><br>
-  <label>Items:</label><br>
+  <label>Items: A fixed dictionary of items and prices from In-n-out</label><br>
   <textarea id="itemsBox" rows="10" cols="80" readonly></textarea><br><br>
-  <label>Transactions:</label><br>
+  <label>Transactions: For each customer, generate a transaction with some items</label><br>
   <textarea id="transactionsBox" rows="10" cols="80" readonly></textarea><br><br>
-  <label>Events:</label><br>
+  <label>Events: For each transaction, generate events for every step</label><br>
   <textarea id="eventsBox" rows="10" cols="80" readonly></textarea><br><br>
   <br>
   Process Mining Concept Demonstrated: Performance Analysis
