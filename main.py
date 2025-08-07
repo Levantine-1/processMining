@@ -4,9 +4,14 @@ from datetime import datetime, timedelta
 from faker import Faker
 
 import pandas as pd
+
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from flask import Flask, request, make_response
+import io
+
+from flask import Flask, request, make_response, send_file
 
 app = Flask(__name__)
 
@@ -189,91 +194,119 @@ def js_sample_data():
 @app.route('/', methods=['GET'])
 def index():
     html = '''
-    <html>
-      <head>
-        <title>Sample Data Generator</title>
-      </head>
-      <body>
-        <h2>Sample Data Generator</h2>
-        Number of customer transactions to generate: <input type="number" id="entriesInput" value="10" min="1" style="width:60px;">
-        <button id="generateBtn">Generate</button>
-        <br><br>
-        <label>Customers:</label><br>
-        <textarea id="customersBox" rows="10" cols="80" readonly></textarea><br><br>
-        <label>Items:</label><br>
-        <textarea id="itemsBox" rows="10" cols="80" readonly></textarea><br><br>
-        <label>Transactions:</label><br>
-        <textarea id="transactionsBox" rows="10" cols="80" readonly></textarea><br><br>
-        <label>Events:</label><br>
-        <textarea id="eventsBox" rows="10" cols="80" readonly></textarea>
-        <script>
-          document.getElementById('generateBtn').onclick = function() {
-            var entries = document.getElementById('entriesInput').value || 10;
-            fetch('/sample_data?entries=' + encodeURIComponent(entries))
-              .then(response => response.json())
-              .then(data => {
-                document.getElementById('customersBox').value = JSON.stringify(data.customers, null, 2);
-                document.getElementById('itemsBox').value = JSON.stringify(data.items, null, 2);
-                document.getElementById('transactionsBox').value = JSON.stringify(data.transactions, null, 2);
-                document.getElementById('eventsBox').value = JSON.stringify(data.events, null, 2);
-              })
-              .catch(error => {
-                document.getElementById('customersBox').value = 'Error: ' + error;
-                document.getElementById('itemsBox').value = '';
-                document.getElementById('transactionsBox').value = '';
-                document.getElementById('eventsBox').value = '';
-              });
-          };
-        </script>
-      </body>
-    </html>
+<html>
+<head>
+  <title>Levantine Demo</title>
+</head>
+<body>
+  <h2>Process Mining Demo</h2>
+  Number of customer transactions to generate: <input type="number" id="entriesInput" value="10" min="1" style="width:60px;">
+  <button id="generateBtn">Generate</button>
+  <br><br>
+  <label>Customers:</label><br>
+  <textarea id="customersBox" rows="10" cols="80" readonly></textarea><br><br>
+  <label>Items:</label><br>
+  <textarea id="itemsBox" rows="10" cols="80" readonly></textarea><br><br>
+  <label>Transactions:</label><br>
+  <textarea id="transactionsBox" rows="10" cols="80" readonly></textarea><br><br>
+  <label>Events:</label><br>
+  <textarea id="eventsBox" rows="10" cols="80" readonly></textarea><br><br>
+  <br>
+  Process Mining Concept Demonstrated: Performance Analysis
+  <img id="cookTimeChart" style="display:none; max-width:600px; margin-top:10px;" />
+  <br><br>
+  <br>
+  <img id="itemsByMethodChart" style="display:none; max-width:600px; margin-top:10px;" />
+  <script>
+  let lastSampleData = null;
+
+  function fetchChart(endpoint, imgId) {
+    if (!lastSampleData) return;
+    fetch(endpoint, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(lastSampleData)
+    })
+    .then(response => response.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      document.getElementById(imgId).src = url;
+      document.getElementById(imgId).style.display = 'block';
+    });
+  }
+
+  document.getElementById('generateBtn').onclick = function() {
+    var entries = document.getElementById('entriesInput').value || 10;
+    fetch('/sample_data?entries=' + encodeURIComponent(entries))
+      .then(response => response.json())
+      .then(data => {
+        lastSampleData = data;
+        document.getElementById('customersBox').value = JSON.stringify(data.customers, null, 2);
+        document.getElementById('itemsBox').value = JSON.stringify(data.items, null, 2);
+        document.getElementById('transactionsBox').value = JSON.stringify(data.transactions, null, 2);
+        document.getElementById('eventsBox').value = JSON.stringify(data.events, null, 2);
+
+        // Auto-fetch and display charts
+        fetchChart('/cook_time_chart', 'cookTimeChart');
+        fetchChart('/items_by_transaction_method_chart', 'itemsByMethodChart');
+      })
+      .catch(error => {
+        document.getElementById('customersBox').value = 'Error: ' + error;
+        document.getElementById('itemsBox').value = '';
+        document.getElementById('transactionsBox').value = '';
+        document.getElementById('eventsBox').value = '';
+      });
+  };
+</script>
+</body>
+</html>
     '''
     return html
 
 
 # This function is mostly AI generated
-def get_chart_for_cook_time_per_food_item(sample_data):
-    events_dataframe = pd.DataFrame(sample_data[3])  # events
-    # Build a mapping from item_id to item name for labeling
-    items_df = pd.DataFrame(sample_data[1])  # items
+@app.route('/cook_time_chart', methods=['POST'])
+def get_chart_for_cook_time_per_food_item():
+    sample_data = request.get_json(force=True)
+    events_dataframe = pd.DataFrame(sample_data['events'])
+    items_df = pd.DataFrame(sample_data['items'])
     item_id_to_name = dict(zip(items_df['item_id'], items_df['name']))
 
-    # Filter relevant events
     item_prepared_events = events_dataframe[events_dataframe['event'].str.startswith('item prepared')]
     payment_processed_events = events_dataframe[events_dataframe['event'] == 'payment processed']
 
-    # Merge to get payment time for each item prepared
     item_prepared_events = item_prepared_events.copy()
     item_prepared_events['item_id'] = item_prepared_events['event'].str.extract(r'\((.*?)\)')
 
-    # Get payment processed time per transaction
     payment_times = payment_processed_events[['transaction_id', 'timestamp']].rename(
         columns={'timestamp': 'payment_time'})
     item_prepared_events = item_prepared_events.merge(payment_times, on='transaction_id', how='left')
 
-    # Calculate cook time in minutes
     item_prepared_events['prepared_time'] = pd.to_datetime(item_prepared_events['timestamp'])
     item_prepared_events['payment_time'] = pd.to_datetime(item_prepared_events['payment_time'])
-    item_prepared_events['cook_time_min'] = (item_prepared_events['prepared_time'] - item_prepared_events[
-        'payment_time']).dt.total_seconds() / 60
+    item_prepared_events['cook_time_min'] = (item_prepared_events['prepared_time'] - item_prepared_events['payment_time']).dt.total_seconds() / 60
 
-    # Map item names
     item_prepared_events['item_name'] = item_prepared_events['item_id'].map(item_id_to_name)
 
-    # Plot average cook time per item
     avg_cook_times = item_prepared_events.groupby('item_name')['cook_time_min'].mean().sort_values()
-    avg_cook_times.plot(kind='barh', title='Average Cook Time per Item (minutes)')
-    plt.ylabel('Item')
-    plt.xlabel('Average Cook Time (min)')
-    plt.tight_layout()
-    plt.show()
 
-# This is mostly AI generated
-def plot_total_items_by_transaction_method(sample_data):
-    # sample_data[2] is the transactions list
-    transactions = pd.DataFrame(sample_data[2])
+    fig, ax = plt.subplots(figsize=(8, 4))
+    avg_cook_times.plot(kind='barh', ax=ax, title='Average Cook Time per Item (minutes)')
+    ax.set_ylabel('Item')
+    ax.set_xlabel('Average Cook Time (min)')
+    fig.tight_layout()
 
-    # Expand the items list into rows
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png')
+    plt.close(fig)
+    buf.seek(0)
+    return make_response(send_file(buf, mimetype='image/png'))
+
+@app.route('/items_by_transaction_method_chart', methods=['POST'])
+def plot_total_items_by_transaction_method():
+    sample_data = request.get_json(force=True)
+    transactions = pd.DataFrame(sample_data['transactions'])
+
     rows = []
     for _, row in transactions.iterrows():
         for item in row['items']:
@@ -282,16 +315,19 @@ def plot_total_items_by_transaction_method(sample_data):
                 'quantity': item['quantity']
             })
     items_df = pd.DataFrame(rows)
-
-    # Group by transaction_method and sum quantities
     totals = items_df.groupby('transaction_method')['quantity'].sum().sort_values()
 
-    # Plot
-    totals.plot(kind='barh', color='skyblue', title='Total Items Ordered by Transaction Method')
-    plt.xlabel('Total Items Ordered')
-    plt.ylabel('Transaction Method')
-    plt.tight_layout()
-    plt.show()
+    fig, ax = plt.subplots(figsize=(8, 4))
+    totals.plot(kind='barh', color='skyblue', ax=ax, title='Total Items Ordered by Transaction Method')
+    ax.set_xlabel('Total Items Ordered')
+    ax.set_ylabel('Transaction Method')
+    fig.tight_layout()
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png')
+    plt.close(fig)
+    buf.seek(0)
+    return make_response(send_file(buf, mimetype='image/png'))
 
 def main():
     sample_data = get_sample_data(6)
@@ -303,5 +339,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-    # app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000)
