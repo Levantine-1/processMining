@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 import io
 
 from flask import Flask, request, make_response, send_file
-
 app = Flask(__name__)
+
 
 def generate_customers(number_of_customers):
     fake = Faker('en_US')
@@ -35,6 +35,7 @@ def generate_customers(number_of_customers):
         })
     return customers
 
+
 def get_items():
     items = [ # IN-N-OUT Menu from an image from Nov 2023
         {"item_id": str(uuid.uuid4()).split("-")[0], "name": "Double Double Cheeseburger", "price": 6.40},
@@ -51,6 +52,7 @@ def get_items():
         {"item_id": str(uuid.uuid4()).split("-")[0], "name": "Coffee", "price": 1.45}
     ]
     return items
+
 
 def generate_transactions(customers, items):
     transactions = []
@@ -84,6 +86,7 @@ def generate_transactions(customers, items):
             "items": items_list,
         })
     return transactions
+
 
 def generate_event_data(transactions):
     all_events = []
@@ -140,7 +143,6 @@ def generate_event_data(transactions):
 
         all_events.extend(events)
     return all_events
-
 
 
 def get_sample_data(entries):
@@ -302,6 +304,7 @@ def get_chart_for_cook_time_per_food_item():
     buf.seek(0)
     return make_response(send_file(buf, mimetype='image/png'))
 
+
 @app.route('/items_by_transaction_method_chart', methods=['POST'])
 def plot_total_items_by_transaction_method():
     sample_data = request.get_json(force=True)
@@ -329,13 +332,13 @@ def plot_total_items_by_transaction_method():
     buf.seek(0)
     return make_response(send_file(buf, mimetype='image/png'))
 
+
 def main():
     sample_data = get_sample_data(6)
     print_sample_data(sample_data)
 
     get_chart_for_cook_time_per_food_item(sample_data)
     plot_total_items_by_transaction_method(sample_data)
-
 
 
 if __name__ == "__main__":
