@@ -75,16 +75,69 @@ def generate_transactions(customers, items):
         })
     return transactions
 
+def generate_event_data(transactions):
+    all_events = []
+    for transaction in transactions:
+        base_time = datetime.fromisoformat(transaction["timestamp"])
+        events = []
+        minutes = 0
+
+        # Order placed
+        events.append({
+            "transaction_id": transaction["transaction_id"],
+            "event": "order placed",
+            "timestamp": (base_time + timedelta(minutes=minutes)).isoformat()
+        })
+        minutes += random.randint(1, 3)
+
+        # Payment processed
+        events.append({
+            "transaction_id": transaction["transaction_id"],
+            "event": "payment processed",
+            "timestamp": (base_time + timedelta(minutes=minutes)).isoformat()
+        })
+        minutes += random.randint(1, 3)
+
+        # Each item prepared
+        for item in transaction["items"]:
+            events.append({
+                "transaction_id": transaction["transaction_id"],
+                "event": f"item prepared ({item['item_id']})",
+                "timestamp": (base_time + timedelta(minutes=minutes)).isoformat()
+            })
+            minutes += random.randint(1, 2)
+
+        # Order delivered
+        events.append({
+            "transaction_id": transaction["transaction_id"],
+            "event": "order delivered",
+            "timestamp": (base_time + timedelta(minutes=minutes)).isoformat()
+        })
+        minutes += random.randint(1, 2)
+
+        # Randomly cancel the order
+        if random.random() < 0.1:  # 10% chance to cancel
+            events.append({
+                "transaction_id": transaction["transaction_id"],
+                "event": "order cancelled",
+                "timestamp": (base_time + timedelta(minutes=minutes)).isoformat()
+            })
+
+        all_events.extend(events)
+    return all_events
+
+
 
 def get_sample_data(entries):
     customers = generate_customers(number_of_customers=entries)
     items = get_items()
     transactions = generate_transactions(customers, items)
-    return customers, items, transactions
+    events = generate_event_data(transactions)
+    return customers, items, transactions, events
 
 
 def print_sample_data(sample_data):
-    customers, items, transactions = sample_data
+    customers, items, transactions, events = sample_data
 
     print("Customers:")
     for c in customers:
@@ -98,16 +151,21 @@ def print_sample_data(sample_data):
     for t in transactions:
         print(t)
 
+    print("\nEvents:")
+    for e in events:
+        print(e)
+
 
 @app.route('/sample_data', methods=['GET'])
 def js_sample_data():
     entries = request.args.get('entries', default=10, type=int)
-    customers, items, transactions = get_sample_data(entries)
+    customers, items, transactions, events = get_sample_data(entries)
 
     response = {
         "customers": customers,
         "items": items,
-        "transactions": transactions
+        "transactions": transactions,
+        "events": events
     }
 
     return make_response(response, 200)
@@ -122,7 +180,7 @@ def index():
       </head>
       <body>
         <h2>Sample Data Generator</h2>
-        Number of entries to generate: <input type="number" id="entriesInput" value="10" min="1" style="width:60px;">
+        Number of customer transactions to generate: <input type="number" id="entriesInput" value="10" min="1" style="width:60px;">
         <button id="generateBtn">Generate</button>
         <br><br>
         <label>Customers:</label><br>
@@ -130,7 +188,9 @@ def index():
         <label>Items:</label><br>
         <textarea id="itemsBox" rows="10" cols="80" readonly></textarea><br><br>
         <label>Transactions:</label><br>
-        <textarea id="transactionsBox" rows="10" cols="80" readonly></textarea>
+        <textarea id="transactionsBox" rows="10" cols="80" readonly></textarea><br><br>
+        <label>Events:</label><br>
+        <textarea id="eventsBox" rows="10" cols="80" readonly></textarea>
         <script>
           document.getElementById('generateBtn').onclick = function() {
             var entries = document.getElementById('entriesInput').value || 10;
@@ -140,11 +200,13 @@ def index():
                 document.getElementById('customersBox').value = JSON.stringify(data.customers, null, 2);
                 document.getElementById('itemsBox').value = JSON.stringify(data.items, null, 2);
                 document.getElementById('transactionsBox').value = JSON.stringify(data.transactions, null, 2);
+                document.getElementById('eventsBox').value = JSON.stringify(data.events, null, 2);
               })
               .catch(error => {
                 document.getElementById('customersBox').value = 'Error: ' + error;
                 document.getElementById('itemsBox').value = '';
                 document.getElementById('transactionsBox').value = '';
+                document.getElementById('eventsBox').value = '';
               });
           };
         </script>
