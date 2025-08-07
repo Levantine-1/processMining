@@ -202,7 +202,7 @@ def index():
 </head>
 <body>
   <h2>Process Mining Demo</h2>
-  Number of customer transactions to generate: <input type="number" id="entriesInput" value="10" min="1" style="width:60px;">
+  Number of customer transactions to generate: <input type="number" id="entriesInput" value="100" min="1" style="width:60px;">
   <button id="generateBtn">Generate</button>
   <br><br>
   <label>Customers:</label><br>
