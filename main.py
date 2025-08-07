@@ -100,9 +100,63 @@ def print_sample_data(sample_data):
         print(t)
 
 
+@app.route('/sample_data', methods=['GET'])
+def js_sample_data():
+    entries = request.args.get('entries', default=10, type=int)
+    customers, items, transactions = get_sample_data(entries)
+
+    response = {
+        "customers": customers,
+        "items": items,
+        "transactions": transactions
+    }
+
+    return make_response(response, 200)
+
+
+@app.route('/', methods=['GET'])
+def index(): # Quick and dirty to serve a simple HTML page
+    html = '''
+    <html>
+      <head>
+        <title>Sample Data Generator</title>
+      </head>
+      <body>
+        <h2>Sample Data Generator</h2>
+        <button id="generateBtn">Generate</button>
+        <br><br>
+        <label>Customers:</label><br>
+        <textarea id="customersBox" rows="10" cols="80" readonly></textarea><br><br>
+        <label>Items:</label><br>
+        <textarea id="itemsBox" rows="10" cols="80" readonly></textarea><br><br>
+        <label>Transactions:</label><br>
+        <textarea id="transactionsBox" rows="10" cols="80" readonly></textarea>
+        <script>
+          document.getElementById('generateBtn').onclick = function() {
+            fetch('/sample_data')
+              .then(response => response.json())
+              .then(data => {
+                document.getElementById('customersBox').value = JSON.stringify(data.customers, null, 2);
+                document.getElementById('itemsBox').value = JSON.stringify(data.items, null, 2);
+                document.getElementById('transactionsBox').value = JSON.stringify(data.transactions, null, 2);
+              })
+              .catch(error => {
+                document.getElementById('customersBox').value = 'Error: ' + error;
+                document.getElementById('itemsBox').value = '';
+                document.getElementById('transactionsBox').value = '';
+              });
+          };
+        </script>
+      </body>
+    </html>
+    '''
+    return html
+
+
 def main():
     sample_data = get_sample_data(10)
     print_sample_data(sample_data)
 
 if __name__ == "__main__":
     main()
+    app.run(host="0.0.0.0", port=5000)
