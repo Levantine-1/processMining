@@ -1,0 +1,80 @@
+# https://medium.com/devops-techable/build-docker-image-with-github-actions-and-push-it-to-amazon-ecr-d4e739472284
+
+# Although this template is deployed in multiple repos, it is primarily maintained in the Thisper repository.
+# https://github.com/Levantine-1/thisper
+# And then it is copied to other github repositories as needed in the github actions workflow directory.
+
+name: Deploy to ECR
+
+on:
+  push:
+    branches:
+     - 'master'
+
+env:
+  service_name: processmining
+  url: 'https://thisper.levantine.io'
+
+jobs:
+  run_terraform:
+    name: Apply Terraform Templates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          repository: 'Levantine-1/thisper' # This is where the run_jenkins_job.sh script is located
+
+      - name: Refresh Terraform
+        run: /bin/bash .github/scripts/run_jenkins_job.sh
+        env:
+          JENKINS_AUTH_KEY: ${{ secrets.JENKINS_AUTH_KEY }}
+          url: ${{ env.url }}
+          service_name: ${{ env.service_name }}
+          job_type: "runTerraform"
+
+  build_and_push_container:
+    name: Build and Push Container to ECR
+    needs: run_terraform
+    runs-on: ubuntu-latest
+    steps:
+     - name: Check out code
+       uses: actions/checkout@v4
+
+     - name: Configure AWS credentials
+       uses: aws-actions/configure-aws-credentials@v4
+       with:
+         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+         aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+         aws-region: us-west-2
+
+     - name: Login to Amazon ECR
+       id: login-ecr
+       uses: aws-actions/amazon-ecr-login@v2
+
+     - name: Build, tag, and push image to Amazon ECR
+       env:
+         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+         ECR_REPOSITORY: ${{ env.service_name }}
+         IMAGE_TAG: ${{ env.service_name }}-image-${{github.run_number}}
+       run: |
+         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+  deploy_container:
+    name: Pull and Deploy Container
+    runs-on: ubuntu-latest
+    needs: build_and_push_container
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          repository: 'Levantine-1/thisper' # This is where the run_jenkins_job.sh script is located
+
+      - name: Deploy Container
+        run: /bin/bash .github/scripts/run_jenkins_job.sh
+        env:
+          JENKINS_AUTH_KEY: ${{ secrets.JENKINS_AUTH_KEY }}
+          url: ${{ env.url }}
+          service_name: ${{ env.service_name }}
+          job_type: "deployContainer"
