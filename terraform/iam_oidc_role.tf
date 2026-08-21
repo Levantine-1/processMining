@@ -59,6 +59,18 @@ resource "aws_iam_role_policy" "github_actions_processmining_policy" {
         {
             "Effect": "Allow",
             "Action": [
+                "iam:GetRole",
+                "iam:CreateRole",
+                "iam:DeleteRole",
+                "iam:GetRolePolicy",
+                "iam:PutRolePolicy",
+                "iam:DeleteRolePolicy"
+            ],
+            "Resource": "arn:aws:iam::975050308029:role/github_actions_processmining"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
                 "ecr:CreateRepository",
                 "ecr:DeleteRepository",
                 "ecr:DescribeRepositories",
